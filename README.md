@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Attnd
 
-## Getting Started
+Mobile first event platform built with Next.js, Supabase and Stripe.
 
-First, run the development server:
+## Backend setup
+
+1. Create a Supabase project.
+2. Run the SQL files in `supabase/migrations` in filename order with the Supabase SQL editor.
+3. Copy `.env.example` to `.env.local` and add the project URL, publishable key and service role key.
+4. In Supabase Auth, enable the login providers you want to use. Email magic links work with the email provider; phone login also needs an SMS provider; Google and Apple need their OAuth credentials and callback URLs.
+5. Add `https://YOUR_DOMAIN/auth/callback` and the local callback URL to the Supabase redirect allow list.
+6. Add a Stripe secret key and create a webhook for `POST /api/stripe/webhook`. Subscribe it to `checkout.session.completed` and `checkout.session.expired`, then add the signing secret to `.env.local`.
+7. Set `NEXT_PUBLIC_APP_URL` to the deployed app URL.
+8. Configure `RESEND_API_KEY` and `EMAIL_FROM` for invitation and transfer emails.
+9. Configure the APNs key, team ID and bundle ID from `.env.example`. Enable Push Notifications for the Xcode target and upload the same APNs key details to the deployment.
+10. Complete Stripe Connect onboarding from the withdrawal screen before creating real host or affiliate payouts.
+
+The service role key is server only. Never expose it with a `NEXT_PUBLIC_` prefix.
+
+## What is persisted
+
+- Supabase Auth sessions, profiles and onboarding details
+- Draft and published events, schedules, expectations, locations and media
+- Ticket types, Stripe orders, issued tickets and QR check-ins
+- Affiliate attribution, commissions and Stripe Connect payout records
+- Event invitations, ticket transfers, in-app notifications and APNs devices
+- Public event media and private ownership rules through Row Level Security
+
+Stripe Embedded Checkout handles card and wallet availability directly inside Attnd on the website and in the native app shell. Adaptive Pricing is enabled so eligible customers can see localized currencies. Promotion codes are entered in Stripe Checkout and must be created in Stripe.
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Quality checks:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx tsc --noEmit
+npm run lint
+npm run build
+```

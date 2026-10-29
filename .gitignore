@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# added for GitHub backup
+/output/
+/tmp/
+build/
+!.env.example
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.key
+DerivedData/
+xcuserdata/
+*.xcarchive
+*.ipa
+.vercel

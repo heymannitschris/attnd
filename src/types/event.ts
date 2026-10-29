@@ -1,0 +1,60 @@
+export type DiscoveryEvent = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  distance: string;
+  price: string;
+  attendeeCount: number;
+  tags: readonly string[];
+  image: string;
+  imageAlt: string;
+  badge: string;
+  audience?: "all" | "women" | "men";
+  startsAt?: string;
+  endsAt?: string;
+  liveDiscoveryEnabled?: boolean;
+  ticketSalesDuringEvent?: boolean;
+  latitude?: number;
+  longitude?: number;
+};
+
+export type EventPerson = { id: string; name: string; portrait: number; avatarUrl?: string; location?: string };
+export type EventGalleryCategory = "Venue" | "Stage" | "People" | "Atmosphere" | "Location" | "UGC";
+export type EventGalleryPhoto = {
+  src: string;
+  alt: string;
+  title: string;
+  caption: string;
+  category: EventGalleryCategory;
+  likes: number;
+};
+export type EventGalleryVideo = {
+  src: string;
+  poster: string;
+  alt: string;
+  title: string;
+  caption: string;
+  category: EventGalleryCategory;
+  duration: string;
+  durationSeconds: number;
+  frames: readonly string[];
+  likes: number;
+};
+export type EventDetails = {
+  eventId: string;
+  description: string;
+  moreDescription: string;
+  endTime: string;
+  highlights: readonly { label: string; icon: "music" | "flame" | "leaf" | "users" }[];
+  host: EventPerson & { eventCount: number; rating: string; verified: boolean };
+  attendees: readonly EventPerson[];
+  photos: readonly EventGalleryPhoto[];
+  media?: readonly { src: string; alt: string; kind: "photo" | "video"; category?: EventGalleryCategory; description?: string }[];
+  video?: EventGalleryVideo;
+  admission: "tickets" | "rsvp";
+  schedule?: readonly { time: string; title: string }[];
+  expectations?: readonly string[];
+  location?: { lat: number; lon: number; address: string };
+};

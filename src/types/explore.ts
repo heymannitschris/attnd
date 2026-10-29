@@ -1,0 +1,22 @@
+export type ExploreEvent = {
+  id: string;
+  eventId: string;
+  title: string;
+  venue: string;
+  distance: string;
+  dateLabel: string;
+  time: string;
+  attendeeCount: number;
+  image: string;
+  imageAlt: string;
+  media?: readonly { src: string; alt: string; kind: "photo" | "video" }[];
+  category: string;
+  audience: "all" | "women" | "men";
+  free: boolean;
+  price: string;
+  startsAt?: string;
+  endsAt?: string;
+  liveDiscoveryEnabled?: boolean;
+  location: { lat: number; lon: number };
+  marker: { x: number; y: number; color: string };
+};

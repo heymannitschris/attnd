@@ -1,0 +1,21 @@
+project_id = "attnd"
+
+[auth]
+site_url = "https://www.attnd.space"
+additional_redirect_urls = ["https://www.attnd.space/auth/callback", "https://attnd.space/auth/callback", "https://event-platform-mobile.vercel.app/auth/callback", "com.ninjaworld.attndr://auth/callback"]
+
+[auth.email]
+otp_length = 6
+
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "login@mail.attnd.space"
+sender_name = "Attnd"
+
+[auth.email.template.magic_link]
+subject = "Your Attnd sign-in code"
+content_path = "./supabase/templates/magic_link.html"

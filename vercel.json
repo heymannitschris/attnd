@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/saved-event-reminders", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/waitlist", "schedule": "*/5 * * * *" }
+  ]
+}
