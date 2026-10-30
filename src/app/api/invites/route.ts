@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { inviteEmail } from "@/lib/emails/templates";
 import { notifyUsers } from "@/lib/notify";
 import { getAppUrl } from "@/lib/stripe";
 
 async function resolveEvent(admin: ReturnType<typeof createAdminClient>, value: string) {
-  const query = admin.from("events").select("id, slug, title").eq("status", "published");
+  const query = admin.from("events").select("id, slug, title, starts_at, ends_at, timezone, venue_name, address, city, latitude, longitude, cover_url").eq("status", "published");
   return (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value) ? query.eq("id", value) : query.eq("slug", value)).maybeSingle();
 }
 
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   const href = `/events/${event.slug}?affiliate_id=${user.id}`;
   await notifyUsers(recipientIds, { category: "Events", title: `You were invited to ${event.title}`, body: message || "Open the invitation to see the event.", href, metadata: { event_id: event.id, inviter_id: user.id } });
   const inviteUrl = new URL(href, getAppUrl(request)).toString();
-  const deliveries = await Promise.all(emails.map(async (email) => ({ email, result: await sendEmail({ to: email, subject: `You’re invited to ${event.title}`, html: `<h1>${escapeHtml(event.title)}</h1><p>${escapeHtml(message || "You have been invited to an event on Attnd.")}</p><p><a href="${inviteUrl}">View event</a></p>` }) })));
+  const deliveries = await Promise.all(emails.map(async (email) => ({ email, result: await (async () => { const mail = inviteEmail({ event, message, inviteUrl }); return sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text }); })() })));
   for (const delivery of deliveries) {
     await admin.from("event_invites").update({ email_status: delivery.result.sent ? "sent" : "failed", email_provider_id: delivery.result.sent ? delivery.result.id : null }).eq("inviter_id", user.id).eq("event_id", event.id).eq("invitee_email", delivery.email);
   }

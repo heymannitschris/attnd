@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/email";
+import { accountDeletedEmail } from "@/lib/emails/templates";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -29,6 +31,10 @@ export async function POST(request: Request) {
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
+  if (user.email) {
+    const mail = accountDeletedEmail({ name: (user.user_metadata?.first_name as string | undefined) || null });
+    await sendEmail({ to: user.email, subject: mail.subject, html: mail.html, text: mail.text, idempotencyKey: `account-deleted/${user.id}` }).catch(() => undefined);
+  }
   await supabase.auth.signOut().catch(() => undefined);
   return NextResponse.json({ deleted: true });
 }

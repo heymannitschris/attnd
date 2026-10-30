@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { ticketTransferEmail } from "@/lib/emails/templates";
 import { notifyUsers } from "@/lib/notify";
 import { getAppUrl } from "@/lib/stripe";
 
@@ -19,11 +20,15 @@ export async function POST(request: Request) {
   const row = Array.isArray(transfer) ? transfer[0] : transfer;
   const claimUrl = new URL(`/tickets/transfer/claim?token=${row.claim_token}`, getAppUrl(request)).toString();
   const admin = createAdminClient();
-  const { data: ticket } = await admin.from("tickets").select("events(title)").eq("id", body.ticketId).single();
-  const eventTitle = (ticket?.events as unknown as { title?: string } | null)?.title || "an event";
-  if (recipientId) await notifyUsers([recipientId], { category: "Tickets", title: "A ticket was sent to you", body: `${eventTitle}. Accept it to add it to your tickets.`, href: `/tickets/transfer/claim?token=${row.claim_token}`, metadata: { transfer_id: row.id } });
+  const { data: ticket } = await admin.from("tickets").select("events(title,slug,starts_at,ends_at,timezone,venue_name,address,city,latitude,longitude,cover_url)").eq("id", body.ticketId).single();
+  const transferEvent = ticket?.events as unknown as ({ title?: string } & Record<string, unknown>) | null;
+  const eventTitle = transferEvent?.title || "an event";
+  if (recipientId) await notifyUsers([recipientId], { category: "Tickets", title: "A ticket was sent to you", body: `${eventTitle}. Accept it to add it to your tickets.`, href: `/tickets/transfer/claim?token=${row.claim_token}`, email: !email, metadata: { transfer_id: row.id } });
   let emailSent: boolean | undefined;
-  if (email) emailSent = (await sendEmail({ to: email, subject: `A ticket for ${eventTitle} was sent to you`, html: `<h1>Your Attnd ticket is waiting</h1><p>${escapeHtml(body.message || "A friend sent you a ticket.")}</p><p><a href="${claimUrl}">Accept ticket</a></p>` })).sent;
+  if (email) {
+    const mail = ticketTransferEmail({ eventTitle, message: body.message, claimUrl, event: transferEvent ? { ...transferEvent, title: eventTitle } : undefined });
+    emailSent = (await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text, idempotencyKey: `ticket-transfer/${row.id}` })).sent;
+  }
   return NextResponse.json({ transferId: row.id, claimUrl, emailSent });
 }
 

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createStripe } from "@/lib/stripe";
 import { notifyUsers } from "@/lib/notify";
 import { promoteWaitlistsForOrder } from "@/lib/waitlist";
+import { sendOrderConfirmation } from "@/lib/order-confirmation-mail";
 
 async function finalizeOrder(orderId: string, paymentReference: string, amount: number, currency: string, paymentIntentId?: string) {
   const admin = createAdminClient();
@@ -19,6 +20,7 @@ async function finalizeOrder(orderId: string, paymentReference: string, amount: 
   const { data: order } = await admin.from("orders").select("event_id,affiliate_user_id,subtotal_minor,currency,events(title,slug,host_id),affiliate_commissions(amount_minor)").eq("id", orderId).single();
   const eventRecord = order?.events as unknown as { title?: string; slug?: string; host_id?: string } | null;
   if (eventRecord?.host_id) await notifyUsers([eventRecord.host_id], { category: "Tickets", preference: "sales", title: "New ticket sale", body: `${eventRecord.title || "Your event"} received a new order.`, href: "/dashboard", metadata: { order_id: orderId } });
+  await sendOrderConfirmation(orderId);
   const commission = (order?.affiliate_commissions as unknown as Array<{ amount_minor: number }> | null)?.[0];
   if (order?.affiliate_user_id && commission) await notifyUsers([order.affiliate_user_id], { category: "Affiliates", title: "You earned a new commission", body: `${(commission.amount_minor / 100).toFixed(2)} ${String(order.currency).toUpperCase()} from ${eventRecord?.title || "an event"}.`, href: "/affiliate", metadata: { order_id: orderId } });
 }

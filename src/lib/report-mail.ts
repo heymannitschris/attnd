@@ -1,4 +1,5 @@
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { moderationReportEmail } from "@/lib/emails/templates";
 import { getAppUrl } from "@/lib/stripe";
 import { SUPPORT_EMAIL } from "@/lib/support";
 
@@ -9,11 +10,8 @@ export async function notifyModeration({ request, targetType, targetId, reason, 
   try {
     const appUrl = getAppUrl(request);
     const link = `${appUrl}${path}`;
-    const result = await sendEmail({
-      to: SUPPORT_EMAIL,
-      subject: `[Attnd report] ${targetType}: ${reason}`.slice(0, 140),
-      html: `<h2>New Attnd report (review within 24h)</h2><p><strong>Type:</strong> ${escapeHtml(targetType)}<br><strong>Reason:</strong> ${escapeHtml(reason)}<br><strong>Target id:</strong> ${escapeHtml(targetId)}<br><strong>Reporter id:</strong> ${escapeHtml(reporterId)}</p><p><a href="${escapeHtml(link)}">${escapeHtml(link)}</a><br><a href="${escapeHtml(`${appUrl}/admin`)}">Open admin</a></p>`,
-    });
+    const mail = moderationReportEmail({ targetType, reason, targetId, reporterId, link, adminUrl: `${appUrl}/admin` });
+    const result = await sendEmail({ to: SUPPORT_EMAIL, subject: mail.subject, html: mail.html, text: mail.text });
     if (!result.sent) console.error("Report mail not sent:", result.reason);
   } catch (error) {
     console.error("Report mail failed:", error);

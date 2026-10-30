@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyUsers } from "@/lib/notify";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { guestlistEmail } from "@/lib/emails/templates";
 
 async function actor() {
   const supabase = await createClient();
@@ -12,7 +13,7 @@ async function actor() {
 
 async function hostedEvent(userId: string, eventId: string) {
   const admin = createAdminClient();
-  const { data } = await admin.from("events").select("id,title,slug,city,host_id").eq("id", eventId).maybeSingle();
+  const { data } = await admin.from("events").select("id,title,slug,city,host_id,starts_at,ends_at,timezone,venue_name,address,latitude,longitude,cover_url").eq("id", eventId).maybeSingle();
   return data?.host_id === userId ? data : null;
 }
 
@@ -53,13 +54,13 @@ export async function POST(request: Request) {
     if (name.length < 2 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return NextResponse.json({ error: "Enter a guest name and a valid optional email" }, { status: 400 });
     const { data: pass, error } = await admin.from("event_guestlist_entries").insert({ event_id: event.id, created_by: user.id, user_id: person?.id || null, guest_name: name, guest_email: email, plus_ones: Math.max(0, Math.min(10, Math.round(Number(body.plusOnes) || 0))), notes: String(body.notes || "").slice(0, 500) }).select("id").single();
     if (error) return NextResponse.json({ error: error.code === "23505" ? "This member is already on the guestlist" : error.message }, { status: 400 });
-    if (person?.id) await notifyUsers([person.id], { category: "Events", title: `You’re on the guestlist for ${event.title}`, body: "Your Guestlist Pass and QR code are ready.", href: "/tickets?tab=Guestlist", preference: "updates" });
+    if (person?.id) await notifyUsers([person.id], { category: "Events", title: `You’re on the guestlist for ${event.title}`, body: "Your Guestlist Pass and QR code are ready.", href: "/tickets?tab=Guestlist", preference: "updates", email: false });
     let inviteEmail = email;
     if (!inviteEmail && person?.id) inviteEmail = (await admin.auth.admin.getUserById(person.id)).data.user?.email || null;
     let emailSent: boolean | undefined;
     if (inviteEmail) {
-      const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
-      const result = await sendEmail({ to: inviteEmail, subject: `You’re on the guestlist for ${event.title}`, html: `<h1>You’re on the guestlist</h1><p>${escapeHtml(name)}, the host added you to <strong>${escapeHtml(event.title)}</strong>${Number(body.plusOnes) > 0 ? ` with ${Math.round(Number(body.plusOnes))} plus-one${Number(body.plusOnes) === 1 ? "" : "s"}` : ""}.</p><p>Your Guestlist Pass and QR code are ready in Attnd.</p><p><a href="${origin}/tickets?tab=Guestlist">Open your Guestlist Pass</a></p>` });
+      const mail = guestlistEmail({ event, name, plusOnes: Math.max(0, Math.round(Number(body.plusOnes) || 0)) });
+      const result = await sendEmail({ to: inviteEmail, subject: mail.subject, html: mail.html, text: mail.text, idempotencyKey: `guestlist/${pass?.id}` });
       emailSent = result.sent;
     }
     return NextResponse.json({ created: true, passId: pass?.id, emailSent });

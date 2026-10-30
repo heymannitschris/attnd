@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { eventReminderEmail } from "@/lib/emails/templates";
 import { notifyUsers } from "@/lib/notify";
 
-type EventRow = { id: string; slug: string; title: string; starts_at: string; timezone: string; venue_name: string | null; city: string | null };
+type EventRow = { id: string; slug: string; title: string; starts_at: string; ends_at: string | null; timezone: string; venue_name: string | null; address: string | null; city: string | null; latitude: number | null; longitude: number | null; cover_url: string | null };
 type SaveRow = { user_id: string; event_id: string };
 type DeliveryRow = { id: string; push_sent: boolean; email_sent: boolean };
 
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   const now = new Date();
   const latest = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const { data: events, error: eventsError } = await admin.from("events")
-    .select("id,slug,title,starts_at,timezone,venue_name,city")
+    .select("id,slug,title,starts_at,ends_at,timezone,venue_name,address,city,latitude,longitude,cover_url")
     .eq("status", "published").gt("starts_at", now.toISOString()).lte("starts_at", latest.toISOString());
   if (eventsError) return NextResponse.json({ error: eventsError.message }, { status: 500 });
   const dueEvents = (events || []) as EventRow[];
@@ -45,21 +46,29 @@ export async function GET(request: Request) {
     const when = kind === "3h" ? "in about 3 hours" : "tomorrow";
     const href = `/events/${event.slug}`;
     if (!delivery.push_sent) {
-      await notifyUsers([saved.user_id], { category: "Events", title: `${event.title} starts ${when}`, body: `${event.venue_name || event.city || "Your saved event"} is coming up. Open Attnd for the details.`, href, preference: "reminders", metadata: { eventId: event.id, reminder: kind } });
-      await admin.from("event_reminder_deliveries").update({ push_sent: true }).eq("id", delivery.id);
+      const { data: pushClaimed } = await admin.from("event_reminder_deliveries").update({ push_sent: true })
+        .eq("id", delivery.id).eq("push_sent", false).select("id").maybeSingle();
+      if (pushClaimed) await notifyUsers([saved.user_id], { category: "Events", title: `${event.title} starts ${when}`, body: `${event.venue_name || event.city || "Your saved event"} is coming up. Open Attnd for the details.`, href, preference: "reminders", email: false, metadata: { eventId: event.id, reminder: kind } });
       delivery.push_sent = true;
     }
     if (!delivery.email_sent) {
-      const { data: authUser } = await admin.auth.admin.getUserById(saved.user_id);
-      if (authUser.user?.email) {
-        const starts = new Intl.DateTimeFormat("en", { dateStyle: "full", timeStyle: "short", timeZone: event.timezone || "UTC" }).format(new Date(event.starts_at));
-        const origin = process.env.NEXT_PUBLIC_SITE_URL || "https://www.attnd.space";
-        const result = await sendEmail({ to: authUser.user.email, subject: `${event.title} starts ${when}`, html: `<h1>${escapeHtml(event.title)} starts ${escapeHtml(when)}</h1><p>${escapeHtml(starts)}</p><p>${escapeHtml([event.venue_name, event.city].filter(Boolean).join(", ") || "Open Attnd for the event location.")}</p><p><a href="${origin}${href}">View saved event</a></p>` });
-        await admin.from("event_reminder_deliveries").update(result.sent ? { email_sent: true, email_error: null } : { email_error: result.reason.slice(0, 300) }).eq("id", delivery.id);
-        delivery.email_sent = result.sent;
-        if (!result.sent) failed += 1;
-      } else {
-        await admin.from("event_reminder_deliveries").update({ email_error: "No account email" }).eq("id", delivery.id);
+      // Claim the email slot atomically so overlapping cron runs cannot both send.
+      const { data: claimed } = await admin.from("event_reminder_deliveries").update({ email_sent: true, email_error: null })
+        .eq("id", delivery.id).eq("email_sent", false).select("id").maybeSingle();
+      if (claimed) {
+        const { data: authUser } = await admin.auth.admin.getUserById(saved.user_id);
+        if (authUser.user?.email) {
+          const mail = eventReminderEmail(event, kind);
+          const result = await sendEmail({ to: authUser.user.email, subject: mail.subject, html: mail.html, text: mail.text, idempotencyKey: `event-reminder/${delivery.id}` });
+          if (!result.sent) {
+            await admin.from("event_reminder_deliveries").update({ email_sent: false, email_error: result.reason.slice(0, 300) }).eq("id", delivery.id);
+            failed += 1;
+          }
+          delivery.email_sent = result.sent;
+        } else {
+          await admin.from("event_reminder_deliveries").update({ email_sent: false, email_error: "No account email" }).eq("id", delivery.id);
+          delivery.email_sent = false;
+        }
       }
     }
     if (delivery.push_sent && delivery.email_sent) {

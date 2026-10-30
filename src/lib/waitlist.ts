@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { waitlistOfferEmail } from "@/lib/emails/templates";
 import { notifyUsers } from "@/lib/notify";
 
 type Promoted = { waitlist_id: string; user_id: string; event_id: string; ticket_type_id: string };
@@ -10,15 +11,16 @@ export async function promoteWaitlist(ticketTypeId: string) {
   if (error) throw error;
   const promoted = (data || []) as Promoted[];
   if (!promoted.length) return [];
-  const { data: tier } = await admin.from("ticket_types").select("name,events(title,slug)").eq("id", ticketTypeId).maybeSingle();
-  const event = tier?.events as unknown as { title?: string; slug?: string } | null;
+  const { data: tier } = await admin.from("ticket_types").select("name,events(title,slug,starts_at,ends_at,timezone,venue_name,address,city,latitude,longitude,cover_url)").eq("id", ticketTypeId).maybeSingle();
+  const event = tier?.events as unknown as ({ title?: string; slug?: string } & Record<string, unknown>) | null;
   const href = event?.slug ? `/events/${event.slug}/tickets` : "/tickets";
   for (const offer of promoted) {
-    await notifyUsers([offer.user_id], { category: "Tickets", title: "A ticket is available for you", body: `${event?.title || "Your event"} is reserved for you for 30 minutes.`, href, preference: "updates", metadata: { waitlistId: offer.waitlist_id, ticketTypeId } });
+    await notifyUsers([offer.user_id], { category: "Tickets", title: "A ticket is available for you", body: `${event?.title || "Your event"} is reserved for you for 30 minutes.`, href, preference: "updates", email: false, metadata: { waitlistId: offer.waitlist_id, ticketTypeId } });
     const { data: authUser } = await admin.auth.admin.getUserById(offer.user_id);
     if (authUser.user?.email) {
       const origin = process.env.NEXT_PUBLIC_SITE_URL || "https://www.attnd.space";
-      await sendEmail({ to: authUser.user.email, subject: `Your ticket for ${event?.title || "Attnd"} is available`, html: `<h1>Your ticket is ready</h1><p>We reserved ${escapeHtml(tier?.name || "your ticket")} for 30 minutes.</p><p><a href="${origin}${href}">Buy your ticket</a></p>` });
+      const mail = waitlistOfferEmail({ event: { ...(event || {}), title: event?.title || "your event" }, tierName: tier?.name, href: `${origin}${href}` });
+      await sendEmail({ to: authUser.user.email, subject: mail.subject, html: mail.html, text: mail.text, idempotencyKey: `waitlist-offer/${offer.waitlist_id}` });
     }
   }
   return promoted;
