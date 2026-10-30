@@ -45,8 +45,8 @@ export default async function PersonPage({ params }: Props) {
   const { data: { user: viewer } } = await supabase.auth.getUser();
   const [{ data: user }, { data: hostedRows }, { data: cohostRows }, { data: localMembership }, followerCount, followingCount, { data: points }] = await Promise.all([
     admin.from("profiles").select("first_name,username,avatar_url,city,bio,interests,notification_preferences").eq("id", id).maybeSingle(),
-    admin.from("events").select("id,slug,title,cover_url,city,starts_at,status").eq("host_id", id).eq("status", "published").order("starts_at", { ascending: true }),
-    admin.from("event_cohosts").select("events(id,slug,title,cover_url,city,starts_at,status)").eq("user_id", id).eq("status", "accepted"),
+    admin.from("events").select("id,slug,title,cover_url,city,starts_at,status").eq("host_id", id).eq("status", "published").eq("unlisted", false).order("starts_at", { ascending: true }),
+    admin.from("event_cohosts").select("events(id,slug,title,cover_url,city,starts_at,status,unlisted)").eq("user_id", id).eq("status", "accepted"),
     admin.from("local_memberships").select("locality").eq("user_id", id).eq("status", "verified").maybeSingle(),
     admin.from("profile_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", id),
     admin.from("profile_follows").select("following_id", { count: "exact", head: true }).eq("follower_id", id),
@@ -73,7 +73,7 @@ export default async function PersonPage({ params }: Props) {
   const hosted = (hostedRows || []).map((event) => toEvent(event));
   const cohosted = (cohostRows || []).flatMap((row) => {
     const event = row.events as unknown as EventRow | null;
-    return event?.status === "published" ? [toEvent(event)] : [];
+    return event?.status === "published" && !(event as { unlisted?: boolean }).unlisted ? [toEvent(event)] : [];
   });
   const joinedRows: EventRow[] = [];
   if (preferences.show_upcoming_events === true) {

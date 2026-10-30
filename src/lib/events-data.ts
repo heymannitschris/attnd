@@ -13,7 +13,7 @@ import { unstable_cache } from "next/cache";
 type EventRow = {
   id: string; slug: string; title: string; description: string; category: string | null;
   audience: "all" | "women" | "men"; starts_at: string | null; ends_at: string | null; timezone?: string | null;
-  live_discovery_enabled?: boolean; ticket_sales_during_event?: boolean;
+  live_discovery_enabled?: boolean; ticket_sales_during_event?: boolean; unlisted?: boolean | null;
   venue_name: string | null; address: string | null; city: string | null; cover_url: string | null;
   latitude?: number | null; longitude?: number | null;
   expectations: unknown; schedule: unknown; location_kind: "venue" | "online";
@@ -141,7 +141,8 @@ export const getEventBundle = cache(unstable_cache(loadEventBundle, ["event-bund
 const TEST_EVENT_TITLE = /(^|[\s[(])(test|testing)([\s\])—–:-]|$)/i;
 
 /** Feed rule: hide events that already ended and internal test events. */
-export function isFeedVisibleEvent(row: Pick<EventRow, "title" | "starts_at" | "ends_at">, now = Date.now()) {
+export function isFeedVisibleEvent(row: Pick<EventRow, "title" | "starts_at" | "ends_at"> & { unlisted?: boolean | null }, now = Date.now()) {
+  if (row.unlisted) return false;
   if (TEST_EVENT_TITLE.test(row.title || "")) return false;
   const end = row.ends_at || row.starts_at;
   if (!end) return true;
