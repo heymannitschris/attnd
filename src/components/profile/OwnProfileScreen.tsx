@@ -10,6 +10,7 @@ import { useSavedEvents } from "@/components/events/SavedEventsProvider";
 import { ProfileInterestIcon } from "./ProfileInterestIcon";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { eventTimeZone } from "@/lib/event-time";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
 
 type ProfileEvent = {
@@ -152,7 +153,7 @@ export function OwnProfileScreen() {
       type EventRow = { id: string; slug: string; title: string; starts_at: string | null; city: string | null; cover_url: string | null; status: string };
       const toProfileEvent = (event: EventRow, ticket: string): ProfileEvent => ({
         title: event.title,
-        date: event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : event.status.toUpperCase(),
+        date: event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: eventTimeZone() }) : event.status.toUpperCase(),
         location: event.city || "Location to be announced",
         image: event.cover_url || "/events/palm-gathering.jpg",
         href: event.status === "draft" ? `/create?id=${event.id}` : `/events/${event.slug}`,
@@ -186,7 +187,7 @@ export function OwnProfileScreen() {
       if (!active) return;
       setSavedEvents((data || []).map((event) => ({
         title: event.title,
-        date: event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "DATE TO BE ANNOUNCED",
+        date: event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: eventTimeZone() }) : "DATE TO BE ANNOUNCED",
         location: [event.venue_name, event.city].filter(Boolean).join(", ") || "Location to be announced",
         image: event.cover_url || "/events/palm-gathering.jpg",
         href: `/events/${event.slug}`,

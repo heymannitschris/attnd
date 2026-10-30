@@ -7,6 +7,7 @@ import { followerPeople, followingPeople } from "@/lib/mock-social";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { eventTimeZone } from "@/lib/event-time";
 import type { HostEvent, HostProfile } from "@/types/host";
 
 type Props = { params: Promise<{ id: string }> };
@@ -53,7 +54,7 @@ export default async function PersonPage({ params }: Props) {
   type EventRow = { id: string; slug: string; title: string; cover_url: string | null; city: string | null; starts_at: string | null; status: string };
   const toEvent = (event: EventRow): HostEvent => {
     const date = event.starts_at ? new Date(event.starts_at) : null;
-    return { id: event.id, eventId: event.slug, title: event.title, image: event.cover_url || "/events/palm-gathering.jpg", imageAlt: event.title, month: date ? date.toLocaleString("en-US", { month: "short" }).toUpperCase() : "TBA", day: date ? String(date.getDate()) : "—", location: event.city || "Location to be announced", detail: date ? date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "Date to be announced" };
+    return { id: event.id, eventId: event.slug, title: event.title, image: event.cover_url || "/events/palm-gathering.jpg", imageAlt: event.title, month: date ? date.toLocaleString("en-US", { month: "short", timeZone: eventTimeZone() }).toUpperCase() : "TBA", day: date ? date.toLocaleString("en-US", { day: "numeric", timeZone: eventTimeZone() }) : "—", location: event.city || "Location to be announced", detail: date ? date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: eventTimeZone() }) : "Date to be announced" };
   };
   // Server profiles are evaluated per request, so the current time is the correct
   // boundary between their upcoming and past events.

@@ -7,6 +7,7 @@ import type { Map as LeafletMap, Marker } from "leaflet";
 import { DiscoverIcon } from "@/components/events/DiscoverIcon";
 import { EVENT_CATEGORIES } from "@/lib/event-categories";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { eventTimeZone } from "@/lib/event-time";
 import { MAX_VIDEO_SOURCE_BYTES, optimizeVideo } from "@/lib/video-compression";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
@@ -87,7 +88,7 @@ export function CreateEventScreen() {
           if (!response.ok || !result.event) throw new Error(result.error || "Could not load draft");
           if (!active) return;
           const event = result.event;
-          const dateParts = (value: unknown) => typeof value === "string" ? { date: value.slice(0, 10), time: new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }) } : { date: "", time: "" };
+          const dateParts = (value: unknown) => typeof value === "string" ? { date: new Date(value).toLocaleDateString("en-CA", { timeZone: eventTimeZone() }), time: new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: eventTimeZone() }) } : { date: "", time: "" };
           const start = dateParts(event.starts_at); const end = dateParts(event.ends_at);
           setDatabaseEventId(String(event.id)); setExistingStatus(event.status === "published" ? "published" : "draft"); setTitle(String(event.title || "")); setDescription(String(event.description || "")); setCategory(String(event.category || ""));
           setTargetAudience((event.audience as "all" | "women" | "men") || "all"); setEventKind((event.event_kind as EventKind) || "single");

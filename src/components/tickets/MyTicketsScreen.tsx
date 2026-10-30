@@ -10,6 +10,7 @@ import { TicketQr } from "./TicketQr";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthGate } from "@/components/auth/AuthGateProvider";
+import { eventTimeZone } from "@/lib/event-time";
 import { openCalendarEvent } from "@/lib/calendar";
 
 type TicketTab = "Upcoming" | "Guestlist" | "To Review" | "Reviewed" | "Cancelled";
@@ -65,8 +66,8 @@ export function MyTicketsScreen({ initialTab = "Upcoming" }: { initialTab?: Tick
       const { data, error } = ticketResult;
       const reviewedEventIds = new Set((reviewResult.data || []).map((review) => review.event_id));
       type TicketRow = { id: string; order_id: string; qr_token: string; status: string; ticket_types: { name: string } | null; events: { id: string; slug: string; title: string; cover_url: string | null; starts_at: string | null; ends_at: string | null; venue_name: string | null; city: string | null; status: string; host_id: string | null; profiles: { first_name: string | null; username: string | null } | null } | null };
-      const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(new Date(value)) : "Date to be announced";
-      const formatTime = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(value)) : "Time to be announced";
+      const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: eventTimeZone() }).format(new Date(value)) : "Date to be announced";
+      const formatTime = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: eventTimeZone() }).format(new Date(value)) : "Time to be announced";
       setDatabaseTickets(error ? [] : (data as unknown as TicketRow[]).filter((row) => row.events).map((row) => {
         const event = row.events!;
         const cancelled = row.status === "cancelled" || row.status === "refunded" || event.status === "cancelled";

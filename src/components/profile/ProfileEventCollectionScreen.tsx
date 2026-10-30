@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DiscoverIcon } from "@/components/events/DiscoverIcon";
 import { useSavedEvents } from "@/components/events/SavedEventsProvider";
 import { createClient } from "@/lib/supabase/client";
+import { eventTimeZone } from "@/lib/event-time";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 type SavedEvent = { id: string; databaseId: string; title: string; startsAt: string | null; location: string; image: string; count: number; period: "Upcoming" | "Past"; action: "going" | "rsvp" | "buy" };
@@ -46,6 +47,6 @@ export function ProfileEventCollectionScreen() {
   }, [savedIds]);
 
   const visible = useMemo(() => events.filter((event) => period === "All" || event.period === period), [events, period]);
-  const formatDate = (value: string | null) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "Date to be announced";
+  const formatDate = (value: string | null) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: eventTimeZone() }) : "Date to be announced";
   return <div className="profile-collection-screen"><header><h1>Saved</h1></header><div role="tablist" className="profile-collection-tabs">{["All", "Upcoming", "Past"].map((item) => <button key={item} type="button" role="tab" aria-selected={period === item} onClick={() => setPeriod(item)}>{item} ({item === "All" ? events.length : events.filter((event) => event.period === item).length})</button>)}</div><section>{visible.map((event) => <article key={event.id}><Link href={`/events/${event.id}`} className="profile-collection-main"><span className="profile-collection-photo"><Image src={event.image} alt="" fill sizes="150px" className="object-cover" unoptimized={event.image.startsWith("http")} /></span><div><small>{formatDate(event.startsAt)}</small><h2>{event.title}</h2><span><DiscoverIcon name="pin" />{event.location}</span><span className="profile-collection-going"><DiscoverIcon name="users" /><em>{event.count} going</em></span></div></Link><button type="button" className="profile-collection-unsave" aria-label={`Unsave ${event.title}`} onClick={() => toggleSaved(event.id)}><DiscoverIcon name="heart" filled /></button><footer className="profile-collection-actions"><Link href={`/events/${event.id}`}><DiscoverIcon name="eye" />Details</Link><Link href={event.action === "going" ? "/tickets" : event.action === "buy" ? `/events/${event.id}/tickets` : `/events/${event.id}/rsvp`} className="profile-collection-primary">{event.action === "going" ? <><DiscoverIcon name="check" />Going</> : event.action === "buy" ? <><DiscoverIcon name="ticket" />Buy Ticket</> : <><DiscoverIcon name="users" />RSVP</>}</Link></footer></article>)}{loading ? <p className="profile-collection-empty">Loading saved events…</p> : !visible.length && <p className="profile-collection-empty">No saved events in this section.</p>}</section></div>;
 }

@@ -7,11 +7,12 @@ import type { ExploreEvent } from "@/types/explore";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cache } from "react";
+import { eventTimeZone } from "@/lib/event-time";
 import { unstable_cache } from "next/cache";
 
 type EventRow = {
   id: string; slug: string; title: string; description: string; category: string | null;
-  audience: "all" | "women" | "men"; starts_at: string | null; ends_at: string | null;
+  audience: "all" | "women" | "men"; starts_at: string | null; ends_at: string | null; timezone?: string | null;
   live_discovery_enabled?: boolean; ticket_sales_during_event?: boolean;
   venue_name: string | null; address: string | null; city: string | null; cover_url: string | null;
   latitude?: number | null; longitude?: number | null;
@@ -21,14 +22,14 @@ type EventRow = {
   ticket_types?: Array<{ id: string; name: string; description: string; price_minor: number; currency: string; quantity: number; sold_count: number; reserved_count?: number; active: boolean }>;
 };
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, timezone?: string | null) {
   if (!value) return "Date to be announced";
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: eventTimeZone(timezone) }).format(new Date(value));
 }
 
-function formatTime(value: string | null) {
+function formatTime(value: string | null, timezone?: string | null) {
   if (!value) return "Time to be announced";
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: eventTimeZone(timezone) }).format(new Date(value));
 }
 
 function mapRow(row: EventRow): { event: DiscoveryEvent; details: EventDetails; tiers: TicketTier[]; databaseId: string } {
@@ -46,8 +47,8 @@ function mapRow(row: EventRow): { event: DiscoveryEvent; details: EventDetails; 
   const event: DiscoveryEvent = {
     id: row.slug,
     title: row.title,
-    date: formatDate(row.starts_at),
-    time: formatTime(row.starts_at),
+    date: formatDate(row.starts_at, row.timezone),
+    time: formatTime(row.starts_at, row.timezone),
     location: [row.venue_name, row.city].filter(Boolean).join(", ") || (row.location_kind === "online" ? "Online" : row.address || "Location to be announced"),
     distance: row.address || "",
     price: !lowest || lowest.price === 0 ? "Free" : `From ${new Intl.NumberFormat("en-US", { style: "currency", currency: row.ticket_types?.[0]?.currency?.toUpperCase() || "THB" }).format(lowest.price)}`,
@@ -68,7 +69,7 @@ function mapRow(row: EventRow): { event: DiscoveryEvent; details: EventDetails; 
     eventId: row.slug,
     description: row.description,
     moreDescription: "",
-    endTime: formatTime(row.ends_at),
+    endTime: formatTime(row.ends_at, row.timezone),
     highlights: (Array.isArray(row.expectations) ? row.expectations : []).slice(0, 4).map((label, index) => ({ label: String(label), icon: (["leaf", "users", "music", "flame"] as const)[index % 4] })),
     host: { id: row.profiles?.id || row.id, name: row.profiles?.first_name || "Attnd Host", portrait: 0, avatarUrl: row.profiles?.avatar_url || undefined, eventCount: 1, rating: "New", verified: false },
     attendees: [],
@@ -165,8 +166,8 @@ async function loadPublishedExploreEvents(): Promise<ExploreEvent[]> {
         title: row.title,
         venue: row.venue_name || row.city || "Event location",
         distance: "",
-        dateLabel: formatDate(row.starts_at),
-        time: formatTime(row.starts_at),
+        dateLabel: formatDate(row.starts_at, row.timezone),
+        time: formatTime(row.starts_at, row.timezone),
         attendeeCount: (row.ticket_types ?? []).reduce((total, tier) => total + tier.sold_count, 0),
         image: mapped.image,
         imageAlt: mapped.imageAlt,

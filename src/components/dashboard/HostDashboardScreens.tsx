@@ -9,6 +9,7 @@ import type { EarningsSummary } from "@/types/earnings";
 import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import { CheckInTeamPanel } from "@/components/dashboard/CheckInTeamPanel";
 import { TeamManagementPanel } from "@/components/dashboard/TeamManagementPanel";
+import { eventTimeZone } from "@/lib/event-time";
 import { EventAccessPanel } from "@/components/dashboard/EventAccessPanel";
 
 type DashboardIconName = "chart" | "eye" | "coins" | "wallet" | "qr" | "check" | "download" | "edit";
@@ -56,7 +57,7 @@ function EventSummary({ compact = false, event }: { compact?: boolean; event?: C
   const cover = event?.coverUrl || "/hosts/lukas-cover.jpg";
   return <section className={`dashboard-event-summary ${compact ? "compact" : ""}`}>
     <span className="dashboard-event-image"><Image src={cover} alt="" fill sizes="160px" className="object-cover" unoptimized={cover.startsWith("http")} /><time><small>{start ? start.toLocaleDateString("en-US", { month: "short" }) : "Oct"}</small><strong>{start ? start.getDate() : "12"}</strong></time></span>
-    <div><h2>{event?.title || "Mindset Mastery Workshop"}</h2><p><DiscoverIcon name="calendar" />{start ? start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "Sat, Oct 12, 2024"} <span>·</span> {start ? start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "10:00"} – {end ? end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "18:00"}</p><p><DiscoverIcon name="pin" />{event?.city || "Koh Phangan, Thailand"}</p><p><DiscoverIcon name="users" />{event ? `${event.registered} / ${event.capacity}` : "86 / 100"} registered</p></div>
+    <div><h2>{event?.title || "Mindset Mastery Workshop"}</h2><p><DiscoverIcon name="calendar" />{start ? start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: eventTimeZone() }) : "Sat, Oct 12, 2024"} <span>·</span> {start ? start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: eventTimeZone() }) : "10:00"} – {end ? end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: eventTimeZone() }) : "18:00"}</p><p><DiscoverIcon name="pin" />{event?.city || "Koh Phangan, Thailand"}</p><p><DiscoverIcon name="users" />{event ? `${event.registered} / ${event.capacity}` : "86 / 100"} registered</p></div>
   </section>;
 }
 
