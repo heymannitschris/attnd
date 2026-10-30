@@ -5,6 +5,7 @@ import { getEventBundle } from "@/lib/events-data";
 import { createStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { sendOrderConfirmation } from "@/lib/order-confirmation-mail";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -46,6 +47,8 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Prop
       if (error) notFound();
       const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
       if (paymentIntentId) await admin.from("orders").update({ stripe_payment_intent_id: paymentIntentId }).eq("id", orderId);
+      // Fallback for the webhook; the atomic confirmation_email_sent_at claim prevents double sends.
+      await sendOrderConfirmation(orderId);
       const { data: item } = await admin.from("order_items").select("ticket_type_id, quantity").eq("order_id", orderId).limit(1).maybeSingle();
       const { data: ticket } = await admin.from("tickets").select("qr_token").eq("order_id", orderId).limit(1).maybeSingle();
       paidTierId = item?.ticket_type_id || paidTierId;
@@ -67,6 +70,7 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Prop
     });
     if (error) notFound();
     await admin.from("orders").update({ stripe_payment_intent_id: paymentIntent.id }).eq("id", orderId);
+    await sendOrderConfirmation(orderId);
     const { data: item } = await admin.from("order_items").select("ticket_type_id, quantity").eq("order_id", orderId).limit(1).maybeSingle();
     const { data: ticket } = await admin.from("tickets").select("qr_token").eq("order_id", orderId).limit(1).maybeSingle();
     paidTierId = item?.ticket_type_id || paidTierId;
