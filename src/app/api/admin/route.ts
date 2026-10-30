@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const { data: refund } = await admin.from("refund_requests").select("id,requester_id,order_id,orders(payment_status,stripe_payment_intent_id,events(title))").eq("id", targetId).maybeSingle();
     if (!refund) return NextResponse.json({ error: "Refund request not found" }, { status: 404 });
     const order = refund.orders as unknown as { payment_status: string; stripe_payment_intent_id: string | null; events: { title?: string } | null };
-    let status = action === "reject-refund" ? "rejected" : action === "needs-info-refund" ? "needs_info" : "approved";
+    const status = action === "reject-refund" ? "rejected" : action === "needs-info-refund" ? "needs_info" : "approved";
     if (action === "approve-refund") {
       if (order.payment_status !== "paid" || !order.stripe_payment_intent_id) return NextResponse.json({ error: "This order cannot be refunded through Stripe" }, { status: 409 });
       try { await createStripe().refunds.create({ payment_intent: order.stripe_payment_intent_id, metadata: { attnd_refund_request_id: refund.id } }, { idempotencyKey: `attnd-refund-${refund.id}` }); }

@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig, requireSupabaseConfig } from "@/lib/supabase/config";
 import { useAppLanguage } from "@/components/i18n/AppLanguageProvider";
 
-type Screen = "splash" | "welcome" | "login" | "signup" | "email" | "phone" | "code" | "profile";
+type Screen = "splash" | "welcome" | "login" | "signup" | "email" | "phone" | "code" | "password" | "profile";
 
 const interests = ["Music", "Nightlife", "Festival", "Party", "Wellness", "Yoga", "Fitness", "Sports", "Workshop", "Education", "Business", "Networking", "Tech", "Art", "Culture", "Food", "Nature", "Travel", "Community", "Charity", "Family", "Retreat", "Meetup", "Spiritual"];
 const languages = ["🇬🇧  English", "🇹🇭  ภาษาไทย"];
@@ -60,6 +60,7 @@ export function OnboardingExperience({ initialAuthScreen }: { initialAuthScreen?
   const [screen, setScreen] = useState<Screen>(initialAuthScreen || "splash");
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [codeFocused, setCodeFocused] = useState(false);
@@ -262,6 +263,15 @@ export function OnboardingExperience({ initialAuthScreen }: { initialAuthScreen?
     } else { setCode(""); setCodeDelivery("email"); setResendCooldown(60); setScreen("code"); }
     setAuthPending(false);
   };
+  const submitPassword = async (event: FormEvent) => {
+    event.preventDefault(); if (!email || !password) return;
+    if (!hasSupabaseConfig) { setAuthNotice("Supabase credentials are required before login can be used."); return; }
+    setAuthPending(true); setAuthNotice("");
+    const { data, error } = await createClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    if (!error && data.user) { setPassword(""); await completeSignIn(data.user.id); }
+    else setAuthNotice(error?.message === "Invalid login credentials" ? "Email or password is incorrect. You can also log in with a one-time code." : error?.message || "Login failed. Please try again.");
+    setAuthPending(false);
+  };
   const submitPhone = async (event: FormEvent) => {
     event.preventDefault(); if (!phone) return;
     if (!hasSupabaseConfig) { setAuthNotice("Supabase credentials are required before login can be used."); return; }
@@ -356,6 +366,7 @@ export function OnboardingExperience({ initialAuthScreen }: { initialAuthScreen?
         <h1>Welcome back</h1><p>Log in to your account</p>
         <div className="onboarding-methods">
           {enabledProviders.email && <button type="button" onClick={() => { setAuthMode("login"); setAuthNotice(""); setScreen("email"); }}><Icon name="mail" /><span><b>Continue with Email</b><small>Receive a one-time code</small></span></button>}
+          {enabledProviders.email && <button type="button" onClick={() => { setAuthMode("login"); setAuthNotice(""); setScreen("password"); }}><Icon name="mail" /><span><b>Email &amp; password</b><small>Log in with your password</small></span></button>}
           {enabledProviders.phone && <button type="button" onClick={() => setScreen("phone")}><Icon name="phone" /><span><b>Continue with Phone</b><small>Receive a one-time code</small></span></button>}
           {enabledProviders.google && <button type="button" onClick={() => void signInWithProvider("google")} disabled={authPending}><Icon name="google" /><span><b>Continue with Google</b></span></button>}
           {enabledProviders.apple && <button type="button" onClick={() => void signInWithProvider("apple")} disabled={authPending}><Icon name="apple" /><span><b>Continue with Apple</b></span></button>}
@@ -392,6 +403,18 @@ export function OnboardingExperience({ initialAuthScreen }: { initialAuthScreen?
         <label><Icon name="mail" /><input type="email" autoComplete="email" placeholder="youremail@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus /></label>
         {authNotice && <p role="status" className="onboarding-field-note">{authNotice}</p>}
         <PrimaryButton type="submit" disabled={!email || authPending}>{authPending ? "Sending…" : "Send Code"}</PrimaryButton>
+      </form>
+    </AuthScreen>
+  );
+
+  if (screen === "password") return (
+    <AuthScreen icon="mail" title="Log in with password" subtitle="Use the password you set in Login & security." back={() => { setAuthNotice(""); setScreen("login"); }}>
+      <form onSubmit={submitPassword} className="onboarding-auth-form">
+        <label><Icon name="mail" /><input type="email" autoComplete="username" placeholder="youremail@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus /></label>
+        <label><Icon name="mail" /><input type="password" autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+        {authNotice && <p role="status" className="onboarding-field-note">{authNotice}</p>}
+        <PrimaryButton type="submit" disabled={!email || !password || authPending}>{authPending ? "Logging in…" : "Log in"}</PrimaryButton>
+        <button type="button" className="onboarding-link" onClick={() => { setAuthNotice(""); setScreen("email"); }}>Forgot password? Get a one-time code</button>
       </form>
     </AuthScreen>
   );

@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const isMarketingSite = pathname === "/";
-  const isLegalPage = ["/terms", "/privacy", "/refunds", "/legal"].includes(pathname);
+  const isLegalPage = ["/terms", "/privacy", "/refunds", "/legal", "/support"].includes(pathname);
   const isOnboarding = pathname === "/onboarding";
   const isEventDetails = pathname.startsWith("/events/");
   const isHostProfile = pathname.startsWith("/hosts/");

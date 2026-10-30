@@ -137,6 +137,18 @@ async function loadEventBundle(id: string) {
 
 export const getEventBundle = cache(unstable_cache(loadEventBundle, ["event-bundle-v1"], { revalidate: 30, tags: ["events"] }));
 
+const TEST_EVENT_TITLE = /(^|[\s[(])(test|testing)([\s\])—–:-]|$)/i;
+
+/** Feed rule: hide events that already ended and internal test events. */
+export function isFeedVisibleEvent(row: Pick<EventRow, "title" | "starts_at" | "ends_at">, now = Date.now()) {
+  if (TEST_EVENT_TITLE.test(row.title || "")) return false;
+  const end = row.ends_at || row.starts_at;
+  if (!end) return true;
+  const endMs = new Date(end).getTime();
+  // Events without an explicit end stay visible for 6 hours after their start.
+  return Number.isNaN(endMs) || (row.ends_at ? endMs : endMs + 6 * 60 * 60 * 1000) >= now;
+}
+
 async function loadPublishedExploreEvents(): Promise<ExploreEvent[]> {
   if (hasSupabaseConfig) {
     const supabase = createAdminClient();
@@ -144,7 +156,7 @@ async function loadPublishedExploreEvents(): Promise<ExploreEvent[]> {
       .select("*, event_media(public_url, kind, category, description, position), ticket_types(id, name, description, price_minor, currency, quantity, sold_count, reserved_count, active)")
       .eq("status", "published").not("latitude", "is", null).not("longitude", "is", null).order("starts_at");
     if (error) throw error;
-    if (data) return (data as unknown as EventRow[]).map((row, index) => {
+    if (data) return (data as unknown as EventRow[]).filter((row) => isFeedVisibleEvent(row)).map((row, index) => {
       const mapped = mapRow(row).event;
       const lowestPrice = (row.ticket_types ?? []).filter((tier) => tier.active).reduce((lowest, tier) => Math.min(lowest, tier.price_minor), Number.POSITIVE_INFINITY);
       return {
@@ -183,7 +195,7 @@ async function loadPublishedEventBundles() {
     const supabase = createAdminClient();
     const { data, error } = await supabase.from("events").select("*, profiles!events_host_id_fkey(id, first_name, avatar_url), event_media(public_url, kind, category, description, position), ticket_types(id, name, description, price_minor, currency, quantity, sold_count, reserved_count, active)").eq("status", "published").order("starts_at");
     if (error) throw error;
-    if (data) return (data as unknown as EventRow[]).map((row) => mapRow(row));
+    if (data) return (data as unknown as EventRow[]).filter((row) => isFeedVisibleEvent(row)).map((row) => mapRow(row));
     return [];
   }
   return mockEvents.flatMap((event) => {
