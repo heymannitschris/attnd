@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyModeration } from "@/lib/report-mail";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string; momentId: string }> }) {
@@ -20,5 +21,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   const reason = String(body.reason || "inappropriate").trim().slice(0, 200);
   const { error } = await admin.from("event_live_moment_reports").upsert({ moment_id: moment.id, reporter_id: user.id, reason, status: "open" }, { onConflict: "moment_id,reporter_id" });
+  if (!error) await notifyModeration({ request, targetType: "live moment", targetId: moment.id, reason, reporterId: user.id, path: `/events/${event.id}` });
   return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ reported: true });
 }

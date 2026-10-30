@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getHiddenProfileIds } from "@/lib/blocks";
+import { notifyModeration } from "@/lib/report-mail";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Context = { params: Promise<{ id: string }> };
@@ -56,6 +57,7 @@ export async function POST(request: Request, context: Context) {
     if (!review) return NextResponse.json({ error: "Review not found" }, { status: 404 });
     if (review.user_id === user.id) return NextResponse.json({ error: "You cannot report your own review" }, { status: 400 });
     const { error } = await admin.from("event_review_reports").upsert({ review_id: review.id, reporter_id: user.id, reason, status: "open" }, { onConflict: "review_id,reporter_id" });
+    if (!error) await notifyModeration({ request, targetType: "review", targetId: review.id, reason, reporterId: user.id, path: `/events/${event.id}` });
     return error ? NextResponse.json({ error: error.message }, { status: 400 }) : NextResponse.json({ reported: true });
   }
   const rating = Number(body?.rating);

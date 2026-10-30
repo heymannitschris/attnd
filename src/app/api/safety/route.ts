@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyModeration } from "@/lib/report-mail";
 import { createClient } from "@/lib/supabase/server";
 
 const targetTypes = ["profile", "event", "review", "moment"] as const;
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
       reason: (body.reason || "inappropriate").slice(0, 60), details: body.details?.slice(0, 1000) || null, status: "open",
     }, { onConflict: "reporter_id,target_type,target_id" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const path = body.targetType === "profile" ? `/people/${body.targetId}` : body.targetType === "event" ? `/events/${body.targetId}` : "/admin";
+    await notifyModeration({ request, targetType: body.targetType, targetId: body.targetId, reason: body.reason || "inappropriate", reporterId: user.id, path });
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
