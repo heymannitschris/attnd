@@ -109,7 +109,6 @@ export async function POST(request: Request) {
       const images = event.cover_url && /^https:\/\//i.test(event.cover_url) ? [event.cover_url] : undefined;
       checkoutSession = await stripe.checkout.sessions.create({
         mode: "payment",
-        ui_mode: "hosted",
         customer: stripeCustomerId,
         client_reference_id: orderId,
         line_items: [
