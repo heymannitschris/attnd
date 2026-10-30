@@ -480,7 +480,7 @@ function OnboardingLocationMap({ radius, center }: { radius: number; center: { l
       if (cancelled) return;
       const initialCenter = L.latLng(initialCenterRef.current.lat, initialCenterRef.current.lon);
       const map = L.map(container, { attributionControl: true, zoomControl: true, minZoom: 7, maxZoom: 17 }).setView(initialCenter, 11);
-      L.tileLayer("https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO', maxZoom: 19, crossOrigin: true }).addTo(map);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19, crossOrigin: true }).addTo(map);
       const marker = L.circleMarker(initialCenter, { radius: 6, color: "#ffffff", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }).addTo(map);
       const circle = L.circle(initialCenter, { radius: initialRadiusRef.current * 1000, color: "#ffffff", weight: 2, fillColor: "#ffffff", fillOpacity: .14 }).addTo(map);
       map.fitBounds(circle.getBounds(), { padding: [12, 12], maxZoom: 13, animate: false });

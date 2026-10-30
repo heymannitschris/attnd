@@ -40,8 +40,8 @@ export function OpenStreetEventMap({ events, selectedId, onSelect, onVisibleEven
     void import("leaflet").then((L) => {
       if (cancelled) return;
       const map = L.map(container, { attributionControl: true, zoomControl: false, minZoom: 9, maxZoom: 18 }).setView([INITIAL_CENTER.lat, INITIAL_CENTER.lon], 12);
-      L.tileLayer("https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO',
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
         crossOrigin: true,
       }).addTo(map);
