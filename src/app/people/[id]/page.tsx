@@ -10,6 +10,9 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { eventTimeZone } from "@/lib/event-time";
 import type { HostEvent, HostProfile } from "@/types/host";
 
+// Real profiles read the viewer session (cookies), so this route must render per request.
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ id: string }> };
 
 const socialPeople = [...followerPeople, ...followingPeople].filter((person, index, all) => all.findIndex((item) => item.id === person.id) === index);
@@ -24,13 +27,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PersonPage({ params }: Props) {
-  const { id } = await params;
-  const person = mockAttendees.find((item) => item.id === id);
+  const { id: rawId } = await params;
+  const person = mockAttendees.find((item) => item.id === rawId);
   if (person) return <AttendeeProfileScreen person={person} />;
-  const socialPerson = socialPeople.find((item) => item.id === id);
+  const socialPerson = socialPeople.find((item) => item.id === rawId);
   if (socialPerson) return <AttendeeProfileScreen person={{ id: socialPerson.id, name: socialPerson.name, location: socialPerson.location, portrait: socialPerson.portrait, group: socialPerson.nearby ? "local" : "traveler", following: socialPerson.following }} />;
-  if (!hasSupabaseConfig || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)) notFound();
+  if (!hasSupabaseConfig) notFound();
   const admin = createAdminClient();
+  // Profiles are linked by id or by username (e.g. /people/heymannitschris).
+  let id = rawId;
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(rawId)) {
+    const { data: byUsername } = await admin.from("profiles").select("id").eq("username", decodeURIComponent(rawId).replace(/^@/, "")).maybeSingle();
+    if (!byUsername) notFound();
+    id = byUsername.id;
+  }
   const supabase = await createClient();
   const { data: { user: viewer } } = await supabase.auth.getUser();
   const [{ data: user }, { data: hostedRows }, { data: cohostRows }, { data: localMembership }, followerCount, followingCount, { data: points }] = await Promise.all([
