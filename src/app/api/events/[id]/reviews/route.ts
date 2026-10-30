@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getHiddenProfileIds } from "@/lib/blocks";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Context = { params: Promise<{ id: string }> };
@@ -27,7 +28,8 @@ export async function GET(_: Request, context: Context) {
     user && event.host_id ? admin.from("host_reviews").select("id,rating,body,status,created_at,updated_at").eq("event_id", event.id).eq("host_id", event.host_id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const published = reviews || [];
+  const hidden = await getHiddenProfileIds(admin, user?.id);
+  const published = (reviews || []).filter((review) => !hidden.has(review.user_id));
   const ratingTotal = published.reduce((sum, review) => sum + review.rating, 0);
   return NextResponse.json({
     reviews: published,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getHiddenProfileIds } from "@/lib/blocks";
 import { createClient } from "@/lib/supabase/server";
 
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "video/mp4", "video/quicktime"]);
@@ -33,7 +34,8 @@ export async function GET(_request: Request, context: RouteContext<"/api/events/
     .select("id,user_id,public_url,kind,caption,created_at,profiles!event_live_moments_user_id_fkey(first_name,username,avatar_url)")
     .eq("event_id", event.id).eq("status", "published").order("created_at", { ascending: false }).limit(40);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ event, canUpload, moments: data || [] });
+  const hidden = await getHiddenProfileIds(admin, user?.id);
+  return NextResponse.json({ event, canUpload, moments: (data || []).filter((moment) => !hidden.has(moment.user_id)) });
 }
 
 export async function POST(request: Request, context: RouteContext<"/api/events/[id]/live-moments">) {

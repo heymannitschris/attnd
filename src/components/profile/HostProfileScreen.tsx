@@ -10,6 +10,7 @@ import { SocialConnectionsContent } from "./SocialConnectionsScreen";
 import { ProfileInterestIcon } from "./ProfileInterestIcon";
 import { useFollowing } from "./FollowingProvider";
 import { HostReviewsPanel } from "./HostReviewsPanel";
+import { SafetyActions } from "@/components/safety/SafetyActions";
 
 const tabs = ["Events", "Reviews", "About", "Followers", "Following"] as const;
 type Tab = (typeof tabs)[number];
@@ -50,7 +51,7 @@ export function HostProfileScreen({ profile, variant = "host", portrait, profile
       <div className="host-intro">
         <div className="host-avatar">{portrait === undefined ? profile.avatar ? <Image src={profile.avatar} alt={profile.name} fill sizes="80px" className="object-cover" unoptimized={profile.avatar.startsWith("http") && !profile.avatar.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`)} /> : null : <Avatar name={profile.name} portrait={portrait} size={78} />}</div>
         <div className="host-name-block"><h1>{profile.name}<span aria-label="Verified host" className="host-verified"><DiscoverIcon name="check" /></span></h1><p>{profile.handle}</p></div>
-        <div className="host-follow-actions"><button type="button" aria-pressed={following} onClick={() => void toggleFollowing(followKey)} className="host-follow">{following ? <><DiscoverIcon name="check" />Following</> : "Follow"}</button></div>
+        <div className="host-follow-actions"><button type="button" aria-pressed={following} onClick={() => void toggleFollowing(followKey)} className="host-follow">{following ? <><DiscoverIcon name="check" />Following</> : "Follow"}</button>{profileId && <SafetyActions targetType="profile" targetId={profileId} blockUserId={profileId} compact />}</div>
       </div>
 
       <div className="host-description"><p>{profile.bio}</p><p>{profile.role}</p>{profile.localMembership && <p className="host-local-badge">✓ Local · {profile.localMembership}</p>}<p className="host-location"><DiscoverIcon name="pin" />{profile.location}</p></div>

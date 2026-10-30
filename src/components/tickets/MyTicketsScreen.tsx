@@ -13,6 +13,13 @@ import { useAuthGate } from "@/components/auth/AuthGateProvider";
 import { openCalendarEvent } from "@/lib/calendar";
 
 type TicketTab = "Upcoming" | "Guestlist" | "To Review" | "Reviewed" | "Cancelled";
+const emptyTicketText: Record<TicketTab, string> = {
+  Upcoming: "No upcoming tickets yet. Discover an event to get started.",
+  Guestlist: "No guestlist passes.",
+  "To Review": "No tickets to review.",
+  Reviewed: "No reviewed tickets yet.",
+  Cancelled: "No cancelled tickets.",
+};
 type GuestlistPass = AppTicket & { guestName: string; plusOnes: number; arrived: boolean; notes: string };
 const tabLabels: readonly TicketTab[] = ["Upcoming", "Guestlist", "To Review", "Reviewed", "Cancelled"];
 
@@ -95,7 +102,7 @@ export function MyTicketsScreen({ initialTab = "Upcoming" }: { initialTab?: Tick
   return <div className="my-tickets-screen">
     <header className="my-tickets-header"><h1>Tickets</h1><button type="button" onClick={() => void openNotifications()} aria-label="Notifications" className="page-notification-link"><DiscoverIcon name="bell" /></button></header>
     <div className="my-ticket-tabs" role="tablist" aria-label="Ticket status">{tabLabels.map((label) => { const count = label === "Guestlist" ? guestlistPasses?.length || 0 : label === "To Review" ? allTickets.filter((ticket) => ticket.status === "Past" && !ticket.reviewed).length : label === "Reviewed" ? allTickets.filter((ticket) => ticket.status === "Past" && ticket.reviewed).length : allTickets.filter((ticket) => ticket.status === label).length; return <button key={label} type="button" role="tab" aria-selected={tab === label} onClick={() => setTab(label)}>{label} ({count})</button>; })}</div>
-    <section className="my-ticket-list" aria-live="polite">{hasSupabaseConfig && (databaseTickets === null || guestlistPasses === null) ? <p className="my-ticket-empty">Loading tickets…</p> : signInRequired ? <p className="my-ticket-empty">Sign in to see your tickets. <Link href="/onboarding">Sign in</Link></p> : loadError ? <p className="my-ticket-empty">Tickets could not be loaded. Please try again.</p> : tab === "Guestlist" ? guestlistPasses?.length ? guestlistPasses.map((pass) => <TicketCard key={pass.id} ticket={pass} guestlistPass={pass} onQr={() => setQrTicket(pass)} onReport={() => setSupportTicket(pass)} onReview={() => setReviewTicket(pass)} />) : <p className="my-ticket-empty">No guestlist passes.</p> : tickets.length ? tickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} onQr={() => setQrTicket(ticket)} onReport={() => setSupportTicket(ticket)} onReview={() => setReviewTicket(ticket)} />) : <p className="my-ticket-empty">No {tab.toLowerCase()} tickets.</p>}</section>
+    <section className="my-ticket-list" aria-live="polite">{hasSupabaseConfig && (databaseTickets === null || guestlistPasses === null) ? <p className="my-ticket-empty">Loading tickets…</p> : signInRequired ? <p className="my-ticket-empty">Sign in to see your tickets. <Link href="/onboarding">Sign in</Link></p> : loadError ? <p className="my-ticket-empty">Tickets could not be loaded. Please try again.</p> : tab === "Guestlist" ? guestlistPasses?.length ? guestlistPasses.map((pass) => <TicketCard key={pass.id} ticket={pass} guestlistPass={pass} onQr={() => setQrTicket(pass)} onReport={() => setSupportTicket(pass)} onReview={() => setReviewTicket(pass)} />) : <p className="my-ticket-empty">No guestlist passes.</p> : tickets.length ? tickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} onQr={() => setQrTicket(ticket)} onReport={() => setSupportTicket(ticket)} onReview={() => setReviewTicket(ticket)} />) : <p className="my-ticket-empty">{emptyTicketText[tab]}</p>}</section>
     {notice && <button type="button" className="my-ticket-notice" onClick={() => setNotice("")}>{notice}</button>}
     {qrTicket && <div className="my-ticket-qr-overlay" role="dialog" aria-modal="true" aria-label={`${qrTicket.title} QR code`}><button type="button" aria-label="Close QR code" onClick={() => setQrTicket(null)}><DiscoverIcon name="x" /></button><TicketQr token={qrTicket.qrToken} /><strong>{qrTicket.title}</strong><span>Show this code at entry</span></div>}
     {supportTicket && <TicketSupportDialog key={supportTicket.id} ticket={supportTicket} onClose={() => setSupportTicket(null)} onDone={(message) => { setSupportTicket(null); setNotice(message); }} />}
