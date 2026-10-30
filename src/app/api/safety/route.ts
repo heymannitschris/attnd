@@ -7,6 +7,20 @@ const targetTypes = ["profile", "event", "review", "moment"] as const;
 type TargetType = (typeof targetTypes)[number];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
+  // RLS: "users read own blocks" limits this to rows where blocker_id = auth.uid().
+  const { data: blocks, error } = await supabase.from("user_blocks").select("blocked_id, created_at").eq("blocker_id", user.id).order("created_at", { ascending: false });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const ids = (blocks || []).map((block) => block.blocked_id as string);
+  // Blocked profiles may be private, so names are read with the service role, limited to the caller's own block list.
+  const { data: profiles } = ids.length ? await createAdminClient().from("profiles").select("id, first_name, username, avatar_url").in("id", ids) : { data: [] };
+  const byId = new Map((profiles || []).map((profile) => [profile.id as string, profile]));
+  return NextResponse.json({ blocked: ids.map((id) => ({ id, firstName: byId.get(id)?.first_name || null, username: byId.get(id)?.username || null, avatarUrl: byId.get(id)?.avatar_url || null })) });
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

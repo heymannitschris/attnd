@@ -6,8 +6,6 @@ import UserNotifications
 import AuthenticationServices
 
 struct EventWebView: UIViewRepresentable {
-    let deepLinkURL: URL?
-
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -42,7 +40,8 @@ struct EventWebView: UIViewRepresentable {
         context.coordinator.webView = webView
         context.coordinator.startObservingPushTokens()
 
-        guard let url = deepLinkURL.flatMap({ AppEnvironment.isAppURL($0) ? $0 : nil }) ?? AppEnvironment.appStartURL else {
+        let pendingDeepLink = DeepLinkRouter.takePending().flatMap { AppEnvironment.isAppURL($0) ? $0 : nil }
+        guard let url = pendingDeepLink ?? AppEnvironment.appStartURL else {
             webView.loadHTMLString(AppEnvironment.configurationErrorHTML, baseURL: nil)
             return webView
         }
@@ -50,17 +49,10 @@ struct EventWebView: UIViewRepresentable {
         return webView
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {
-        guard let deepLinkURL,
-              AppEnvironment.isAppURL(deepLinkURL),
-              context.coordinator.lastHandledDeepLink != deepLinkURL.absoluteString else { return }
-        context.coordinator.lastHandledDeepLink = deepLinkURL.absoluteString
-        uiView.load(URLRequest(url: deepLinkURL, cachePolicy: .reloadRevalidatingCacheData))
-    }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, ASWebAuthenticationPresentationContextProviding, @preconcurrency CLLocationManagerDelegate {
         weak var webView: WKWebView?
-        var lastHandledDeepLink: String?
         private var socialAuthSession: ASWebAuthenticationSession?
         private lazy var locationManager: CLLocationManager = {
             let manager = CLLocationManager()
@@ -74,6 +66,7 @@ struct EventWebView: UIViewRepresentable {
         func startObservingPushTokens() {
             NotificationCenter.default.addObserver(self, selector: #selector(receivePushToken(_:)), name: .attndPushToken, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(openPushURL(_:)), name: .attndOpenPushURL, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(openDeepLink(_:)), name: .attndOpenDeepLink, object: nil)
             if let token = UserDefaults.standard.string(forKey: "attndPushToken"), !token.isEmpty { sendPushToken(token) }
             if let rawURL = UserDefaults.standard.string(forKey: "attndPendingPushURL"), let url = URL(string: rawURL) {
                 UserDefaults.standard.removeObject(forKey: "attndPendingPushURL")
@@ -84,6 +77,12 @@ struct EventWebView: UIViewRepresentable {
         @objc private func receivePushToken(_ notification: Notification) {
             guard let token = notification.object as? String, !token.isEmpty else { return }
             sendPushToken(token)
+        }
+
+        @objc private func openDeepLink(_ notification: Notification) {
+            guard let url = DeepLinkRouter.takePending() ?? (notification.object as? URL),
+                  AppEnvironment.isAppURL(url) else { return }
+            webView?.load(URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData))
         }
 
         @objc private func openPushURL(_ notification: Notification) {

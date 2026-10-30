@@ -5,6 +5,7 @@ import UserNotifications
 extension Notification.Name {
     static let attndPushToken = Notification.Name("attndPushToken")
     static let attndOpenPushURL = Notification.Name("attndOpenPushURL")
+    static let attndOpenDeepLink = Notification.Name("attndOpenDeepLink")
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
