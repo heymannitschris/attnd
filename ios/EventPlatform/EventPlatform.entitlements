@@ -5,6 +5,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:www.attnd.space</string>
+		<string>applinks:attnd.space</string>
 	</array>
 	<key>aps-environment</key>
 	<string>$(APNS_ENVIRONMENT)</string>
