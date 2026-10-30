@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!bundle) return { title: "Event not found" };
   const { event, details } = bundle;
   const title = `${event.title} · Attnd`;
-  const description = details.description?.trim() || `${event.date} at ${event.time} · ${event.location} · ${event.price}`;
+  const description = details.description?.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, "$1").trim() || `${event.date} at ${event.time} · ${event.location} · ${event.price}`;
   const image = event.image.startsWith("http") ? event.image : new URL(event.image, "https://www.attnd.space").toString();
   const canonical = `/events/${event.id}`;
   return {
