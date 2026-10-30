@@ -24,7 +24,7 @@ begin
   get diagnostics removed_orders = row_count;
   -- recompute counters from remaining truth (no other buyers => 0)
   update public.ticket_types tt set
-    sold_count = (select count(*) from public.tickets t where t.ticket_type_id = tt.id and t.status <> 'cancelled'),
+    sold_count = (select count(*) from public.tickets t where t.ticket_type_id = tt.id and t.status in ('valid','used')),
     reserved_count = 0
   where tt.event_id = demo_event;
   return jsonb_build_object('orders', removed_orders, 'tickets', removed_tickets);
