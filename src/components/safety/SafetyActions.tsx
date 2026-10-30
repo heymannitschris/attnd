@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 type TargetType = "profile" | "event" | "review" | "moment";
 const reasons = ["Spam or scam", "Harassment or hate", "Nudity or sexual content", "Violence or illegal activity", "Fake event or profile", "Something else"];
@@ -27,12 +28,12 @@ export function SafetyActions({ targetType, targetId, blockUserId, label = "Repo
   if (!targetId && !blockUserId) return null;
   return <div className="safety-actions" data-compact={compact || undefined}>
     <button type="button" className="safety-actions-trigger" aria-expanded={open} aria-label={compact ? "Report or block" : undefined} onClick={() => { setOpen(!open); setNotice(""); }}>{compact ? "⋯" : label}</button>
-    {open && <div className="safety-actions-sheet" role="dialog" aria-label="Report or block">
+    {open && typeof document !== "undefined" && createPortal(<div className="safety-actions-backdrop" onClick={() => setOpen(false)}><div className="safety-actions-sheet" role="dialog" aria-label="Report or block" aria-modal="true" onClick={(event) => event.stopPropagation()}>
       {targetId && <><p className="safety-actions-title">Report</p>{reasons.map((reason) => <button type="button" key={reason} disabled={busy} onClick={() => void send("report", reason)}>{reason}</button>)}</>}
       {blockUserId && <button type="button" className="safety-actions-block" disabled={busy} onClick={() => { if (window.confirm("Block this user? You will no longer see their profile content, reviews or live moments.")) void send("block"); }}>Block user</button>}
       <p className="safety-actions-policy">Attnd has zero tolerance for objectionable content or abusive users. Reports are reviewed within 24 hours.</p>
       {notice && <p role="status" className="safety-actions-notice">{notice}</p>}
       <button type="button" className="safety-actions-close" onClick={() => setOpen(false)}>Close</button>
-    </div>}
+    </div></div>, document.body)}
   </div>;
 }
