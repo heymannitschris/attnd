@@ -380,7 +380,15 @@ struct EventWebView: UIViewRepresentable {
                 return
             }
 
-            if navigationAction.targetFrame == nil || !AppEnvironment.isAppURL(url) {
+            // Own-domain links (also target=_blank) stay in the WebView. iOS never
+            // routes UIApplication.open of our own universal link back to us, so
+            // opening them externally would land in Safari/Chrome.
+            if AppEnvironment.isAppURL(url) && navigationAction.targetFrame == nil {
+                webView.load(navigationAction.request)
+                decisionHandler(.cancel)
+                return
+            }
+            if !AppEnvironment.isAppURL(url) {
                 if ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
                     UIApplication.shared.open(url)
                     decisionHandler(.cancel)
@@ -415,7 +423,11 @@ struct EventWebView: UIViewRepresentable {
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
             if let url = navigationAction.request.url {
-                UIApplication.shared.open(url)
+                if AppEnvironment.isAppURL(url) {
+                    webView.load(navigationAction.request)
+                } else {
+                    UIApplication.shared.open(url)
+                }
             }
             return nil
         }
