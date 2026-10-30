@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { linkify } from "@/lib/linkify";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -144,7 +145,7 @@ export function EventDetailsScreen({ event, details, databaseEventId, embedded =
       <span className="event-detail-v2-shade" />
       <div className="event-detail-v2-topbar">{embedded ? <button type="button" aria-label="Back to events" className="icon-button" onClick={onClose}><DiscoverIcon name="chevron" className="h-5 w-5 rotate-90" /></button> : <button type="button" aria-label="Back to previous page" className="icon-button" onClick={() => { if (window.history.length > 1) router.back(); else router.push("/discover"); }}><DiscoverIcon name="chevron" className="h-5 w-5 rotate-90" /></button>}</div>
       {galleryMedia.length > 1 && <div className="event-detail-v2-gallery-dots" aria-label={`Media ${coverIndex + 1} of ${galleryMedia.length}`}>{galleryMedia.map((item, index) => <i key={item.src} data-active={index === coverIndex} />)}</div>}
-      <div className="event-detail-v2-heading"><h1>{event.title}</h1><div className="event-detail-v2-heading-description" data-expanded={expandedDescription}><p ref={headingDescriptionRef}>{details.description}</p>{descriptionOverflows && <button type="button" aria-label={expandedDescription ? "Collapse short description" : "Expand short description"} aria-expanded={expandedDescription} onClick={() => setExpandedDescription((current) => !current)}><DiscoverIcon name="chevron" /></button>}</div></div>
+      <div className="event-detail-v2-heading"><h1>{event.title}</h1><div className="event-detail-v2-heading-description" data-expanded={expandedDescription}><p ref={headingDescriptionRef}>{linkify(details.description)}</p>{descriptionOverflows && <button type="button" aria-label={expandedDescription ? "Collapse short description" : "Expand short description"} aria-expanded={expandedDescription} onClick={() => setExpandedDescription((current) => !current)}><DiscoverIcon name="chevron" /></button>}</div></div>
     </section>
 
     <main className="event-detail-v2-main">
