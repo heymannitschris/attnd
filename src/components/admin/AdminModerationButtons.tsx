@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { canPerformAdminAction } from "@/lib/admin-permissions";
+import { confirmDialog, promptDialog } from "@/lib/dialog";
 
 export function AdminModerationButtons({ targetId, targetType, suspended, role }: { targetId: string; targetType: "user" | "event"; suspended: boolean; role: string }) {
   const router = useRouter();
@@ -11,8 +12,8 @@ export function AdminModerationButtons({ targetId, targetType, suspended, role }
   async function update() {
     const action = suspended ? `restore-${targetType}` : `suspend-${targetType}`;
     let note = "";
-    if (!suspended) { const answer = window.prompt(`Reason for suspending this ${targetType}`); if (answer === null) return; note = answer; }
-    if (!window.confirm(`${suspended ? "Restore" : "Suspend"} this ${targetType}?`)) return;
+    if (!suspended) { const answer = await promptDialog(`Reason for suspending this ${targetType}`); if (answer === null) return; note = answer; }
+    if (!(await confirmDialog(`${suspended ? "Restore" : "Suspend"} this ${targetType}?`, { confirmLabel: suspended ? "Restore" : "Suspend", destructive: !suspended }))) return;
     setBusy(true); setNotice("");
     const response = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, targetId, note }) });
     const result = await response.json() as { error?: string };

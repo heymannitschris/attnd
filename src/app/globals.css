@@ -4265,3 +4265,14 @@ body:has(.local-membership-screen) #main-content { min-height: 100dvh; padding: 
 .onboarding-push-optin span { display: grid; gap: 2px; } .onboarding-push-optin small { opacity: .75; }
 .event-review-safety { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .event-detail-report { margin-top: 18px; }
+
+/* In-page confirm / prompt dialog (WKWebView ignores window.confirm) */
+.app-dialog-backdrop { position: fixed; inset: 0; z-index: calc(var(--z-navigation, 100) + 2000); display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,.6); }
+.app-dialog { width: 100%; max-width: 360px; display: grid; gap: 12px; padding: 18px; border-radius: 16px; background: #fff; color: #111; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+.app-dialog-title { font-weight: 700; font-size: 16px; }
+.app-dialog-message { font-size: 14px; line-height: 1.45; color: #333; }
+.app-dialog input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; color: #111; background: #fff; }
+.app-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.app-dialog-actions button { padding: 11px 10px; border-radius: 10px; background: #f0f0f3; color: #111; font-size: 14px; font-weight: 600; text-align: center; }
+.app-dialog-actions button:last-child { background: #111; color: #fff; }
+.app-dialog-actions button[data-destructive] { background: #c62828; color: #fff; }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { promptDialog } from "@/lib/dialog";
 
 type HostEvent = { id: string; title: string };
 type Guest = { id: string; guest_name: string; guest_email: string | null; plus_ones: number; notes: string; status: "invited" | "arrived" | "cancelled"; profiles: { username: string | null } | null };
@@ -34,7 +35,7 @@ export function EventAccessPanel({ hostEvents, mode, activeEventId }: { hostEven
     return response.ok;
   }
   async function reviewLocal(member: Local, status: "verified" | "rejected") {
-    const reviewNote = status === "rejected" ? window.prompt("Optional note for the member", "Please upload a current proof of residence.") || "" : "";
+    const reviewNote = status === "rejected" ? await promptDialog("Optional note for the member", { defaultValue: "Please upload a current proof of residence." }) || "" : "";
     setNotice("");
     const response = await fetch("/api/event-access", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventId, membershipId: member.id, membershipStatus: status, reviewNote }) });
     const result = await response.json() as { error?: string };

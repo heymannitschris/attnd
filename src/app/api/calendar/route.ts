@@ -40,5 +40,5 @@ export async function GET(request: Request) {
     "END:VEVENT", "END:VCALENDAR",
   ].join("\r\n");
   const filename = `${(event?.slug || eventRef).replace(/[^a-z0-9-_]/gi, "-")}.ics`;
-  return new Response(calendar, { headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "private, max-age=60" } });
+  return new Response(calendar, { headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": `${url.searchParams.get("inline") === "1" ? "inline" : "attachment"}; filename="${filename}"`, "Cache-Control": "private, max-age=60" } });
 }

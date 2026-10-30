@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { AdminSidebar, type AdminSectionName } from "@/components/admin/AdminSidebar";
 import { AdminTeamPanel } from "@/components/admin/AdminTeamPanel";
 import { canPerformAdminAction } from "@/lib/admin-permissions";
+import { confirmDialog, promptDialog } from "@/lib/dialog";
 
 type Person = { first_name?: string | null; username?: string | null } | null;
 export type AdminData = {
@@ -46,9 +47,9 @@ export function AdminDashboard({ data, initialTab = "Overview" }: { data: AdminD
   async function act(action: string, targetId: string, defaultNote = "") {
     let note = defaultNote;
     if (["suspend-user", "suspend-event", "reject-local", "reject-refund", "needs-info-refund"].includes(action)) {
-      const answer = window.prompt("Add a reason or note", defaultNote); if (answer === null) return; note = answer;
+      const answer = await promptDialog("Add a reason or note", { defaultValue: defaultNote }); if (answer === null) return; note = answer;
     }
-    if ((action === "approve-refund" || action === "suspend-user" || action === "suspend-event") && !window.confirm(action === "approve-refund" ? "Send this refund through Stripe?" : "Apply this suspension now?")) return;
+    if ((action === "approve-refund" || action === "suspend-user" || action === "suspend-event") && !(await confirmDialog(action === "approve-refund" ? "Send this refund through Stripe?" : "Apply this suspension now?", { destructive: true }))) return;
     setBusy(`${action}:${targetId}`); setNotice("");
     const response = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, targetId, note }) });
     const result = await response.json() as { error?: string };

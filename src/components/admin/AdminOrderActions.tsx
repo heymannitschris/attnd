@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { canPerformAdminAction } from "@/lib/admin-permissions";
+import { confirmDialog, promptDialog } from "@/lib/dialog";
 
 type Props = {
   orderId: string;
@@ -21,11 +22,11 @@ export function AdminOrderActions({ orderId, paymentCaseStatus, refundId, refund
   async function act(action: string, targetId: string) {
     let note = "";
     if (action === "reject-refund" || action === "needs-info-refund") {
-      const answer = window.prompt(action === "reject-refund" ? "Reason for declining this refund" : "What information is needed?");
+      const answer = await promptDialog(action === "reject-refund" ? "Reason for declining this refund" : "What information is needed?");
       if (answer === null) return;
       note = answer;
     }
-    if (action === "approve-refund" && !window.confirm("Refund this order through Stripe? This also invalidates its tickets.")) return;
+    if (action === "approve-refund" && !(await confirmDialog("Refund this order through Stripe? This also invalidates its tickets.", { confirmLabel: "Refund", destructive: true }))) return;
     setBusy(action); setNotice("");
     const response = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, targetId, note }) });
     const result = await response.json() as { error?: string };

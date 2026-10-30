@@ -8,6 +8,7 @@ import { DiscoverIcon } from "@/components/events/DiscoverIcon";
 import { useAppLanguage } from "@/components/i18n/AppLanguageProvider";
 import type { AppLanguage } from "@/lib/app-translations";
 import { createClient } from "@/lib/supabase/client";
+import { confirmDialog } from "@/lib/dialog";
 
 type PaymentMethod = { id: string; brand: string; last4: string; expMonth?: number; expYear?: number; default: boolean };
 type SettingsSection = "profile" | "interests" | "about" | "security" | "payments" | "visibility" | "language";
@@ -164,7 +165,7 @@ export function ProfileSettingsScreen() {
   async function deleteAccount() {
     setNotice("");
     if (deleteConfirm !== "DELETE") return setNotice("Type DELETE to confirm account deletion.");
-    if (!window.confirm("Delete your Attnd account permanently? This cannot be undone.")) return;
+    if (!(await confirmDialog("Delete your Attnd account permanently? This cannot be undone.", { title: "Delete account", confirmLabel: "Delete", destructive: true }))) return;
     setBusy(true);
     const response = await fetch("/api/account/delete", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ confirm: deleteConfirm }) });
     const result = await response.json().catch(() => ({})) as { error?: string };
