@@ -9,6 +9,7 @@ type CheckoutRequest = {
   ticketTypeId?: string;
   quantity?: number;
   affiliateId?: string | null;
+  native?: boolean;
   attendees?: Array<{ firstName?: string; lastName?: string; email?: string }>;
 };
 
@@ -103,12 +104,22 @@ export async function POST(request: Request) {
     try {
       const appUrl = getAppUrl(request);
       const eventPath = `/events/${encodeURIComponent(event.slug || event.id)}`;
-      const successUrl = `${appUrl}${eventPath}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${appUrl}${eventPath}/checkout/payment?tier=${encodeURIComponent(tier.id)}&quantity=${quantity}&checkout=cancelled`;
+      const successPath = `${eventPath}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelPath = `${eventPath}/checkout/payment?tier=${encodeURIComponent(tier.id)}&quantity=${quantity}&checkout=cancelled`;
+      // The iOS app runs Checkout in an in-app ASWebAuthenticationSession. Its
+      // return URLs go through /checkout/native-return, which hands control
+      // back to the app via the com.ninjaworld.attndr:// scheme.
+      const nativeReturn = (path: string) => `${appUrl}/checkout/native-return?next=${encodeURIComponent(path).replace("%7BCHECKOUT_SESSION_ID%7D", "{CHECKOUT_SESSION_ID}")}`;
+      const successUrl = body.native === true ? nativeReturn(successPath) : `${appUrl}${successPath}`;
+      const cancelUrl = body.native === true ? nativeReturn(cancelPath) : `${appUrl}${cancelPath}`;
       const ticketDescription = tier.description?.trim().slice(0, 500) || `${quantity} ticket${quantity === 1 ? "" : "s"} for ${event.title}`;
       const images = event.cover_url && /^https:\/\//i.test(event.cover_url) ? [event.cover_url] : undefined;
       checkoutSession = await stripe.checkout.sessions.create({
         mode: "payment",
+        // Test mode only: restrict to plain cards so App Review never sees
+        // wallets (Apple Pay / Link) with real saved cards. Live mode keeps
+        // Stripe's dynamic payment methods.
+        ...(process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") || process.env.STRIPE_SECRET_KEY?.startsWith("rk_test_") ? { payment_method_types: ["card" as const], wallet_options: { link: { display: "never" as const } } } : {}),
         customer: stripeCustomerId,
         client_reference_id: orderId,
         line_items: [

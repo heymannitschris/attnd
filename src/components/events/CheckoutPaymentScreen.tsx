@@ -10,10 +10,14 @@ import { DiscoverIcon } from "./DiscoverIcon";
 
 const formatPrice = (value: number) => `฿${new Intl.NumberFormat("en-US").format(value)}`;
 
-function openHostedCheckout(url: string) {
-  const nativeHandler = (window as Window & {
+function nativeCheckoutHandler() {
+  return (window as Window & {
     webkit?: { messageHandlers?: { attndCheckout?: { postMessage: (value: { url: string }) => void } } };
   }).webkit?.messageHandlers?.attndCheckout;
+}
+
+function openHostedCheckout(url: string) {
+  const nativeHandler = nativeCheckoutHandler();
   if (nativeHandler) {
     nativeHandler.postMessage({ url });
     return;
@@ -57,7 +61,7 @@ export function CheckoutPaymentScreen({ event, databaseEventId, tier, quantity, 
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ eventId: databaseEventId, ticketTypeId: tier.id, quantity, affiliateId, attendees }),
+        body: JSON.stringify({ eventId: databaseEventId, ticketTypeId: tier.id, quantity, affiliateId, attendees, native: Boolean(nativeCheckoutHandler()) }),
       });
       const result = await response.json() as { free?: boolean; ticketId?: string; checkoutUrl?: string | null; error?: string; loginRequired?: boolean };
       if (result.loginRequired) {

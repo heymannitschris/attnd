@@ -12,13 +12,28 @@ export function SavedEventsProvider({ children }: { children: ReactNode }) {
   const { requireAuth } = useAuthGate();
   useEffect(() => {
     if (!hasSupabaseConfig) return;
-    void createClient().auth.getUser().then(async ({ data }) => {
-      if (!data.user) { window.localStorage.removeItem("attnd:user-id"); setSavedIds(new Set()); return; }
-      window.localStorage.setItem("attnd:user-id", data.user.id);
-      const response = await fetch("/api/saved-events");
+    const supabase = createClient();
+    let cancelled = false;
+    let loadedFor: string | null | undefined;
+    // Load saved events for the current session and reload whenever the
+    // session changes (fresh login, logout, token restored after cold start).
+    // A one-shot load on mount missed saves when the user logged in later.
+    async function load(userId: string | null) {
+      if (userId === loadedFor) return;
+      loadedFor = userId;
+      if (!userId) { window.localStorage.removeItem("attnd:user-id"); setSavedIds(new Set()); return; }
+      window.localStorage.setItem("attnd:user-id", userId);
+      const response = await fetch("/api/saved-events", { cache: "no-store", credentials: "same-origin" });
       const result = await response.json() as { saved?: string[] };
-      if (response.ok) setSavedIds(new Set(result.saved || []));
-    }).catch(() => {});
+      if (!cancelled && response.ok && loadedFor === userId) setSavedIds(new Set(result.saved || []));
+    }
+    void supabase.auth.getUser().then(({ data }) => load(data.user?.id ?? null)).catch(() => {});
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
+        void load(session?.user?.id ?? null).catch(() => {});
+      }
+    });
+    return () => { cancelled = true; subscription.subscription.unsubscribe(); };
   }, []);
   async function toggleSaved(id: string) {
     if (!await requireAuth({ action: "Log in or create an account to save events." })) return false;

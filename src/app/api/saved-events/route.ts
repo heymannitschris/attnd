@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 async function eventByReference(supabase: Awaited<ReturnType<typeof createClient>>, eventRef: string) {
   const column = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(eventRef) ? "id" : "slug";
   return supabase.from("events").select("id,slug").eq(column, eventRef).eq("status", "published").maybeSingle();
@@ -16,7 +18,7 @@ export async function GET() {
     const event = row.events as unknown as { slug: string } | null;
     return event?.slug;
   }).filter(Boolean);
-  return NextResponse.json({ saved });
+  return NextResponse.json({ saved }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {

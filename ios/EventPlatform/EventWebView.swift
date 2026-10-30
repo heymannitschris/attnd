@@ -4,6 +4,8 @@ import CoreLocation
 import AVFoundation
 import UserNotifications
 import AuthenticationServices
+import EventKit
+import EventKitUI
 
 struct EventWebView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -23,6 +25,7 @@ struct EventWebView: UIViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "attndNotificationPermission")
         configuration.userContentController.add(context.coordinator, name: "attndSocialAuth")
         configuration.userContentController.add(context.coordinator, name: "attndCheckout")
+        configuration.userContentController.add(context.coordinator, name: "attndCalendar")
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -51,9 +54,11 @@ struct EventWebView: UIViewRepresentable {
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, ASWebAuthenticationPresentationContextProviding, @preconcurrency CLLocationManagerDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, ASWebAuthenticationPresentationContextProviding, @preconcurrency CLLocationManagerDelegate, @preconcurrency EKEventEditViewDelegate {
         weak var webView: WKWebView?
         private var socialAuthSession: ASWebAuthenticationSession?
+        private var checkoutSession: ASWebAuthenticationSession?
+        private let eventStore = EKEventStore()
         private lazy var locationManager: CLLocationManager = {
             let manager = CLLocationManager()
             manager.delegate = self
@@ -101,6 +106,10 @@ struct EventWebView: UIViewRepresentable {
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "attndCalendar" {
+                presentCalendarEditor(message.body)
+                return
+            }
             if message.name == "attndCheckout" {
                 openCheckout(message.body)
                 return
@@ -146,7 +155,68 @@ struct EventWebView: UIViewRepresentable {
                   url.scheme == "https",
                   let host = url.host?.lowercased(),
                   host == "stripe.com" || host.hasSuffix(".stripe.com") else { return }
-            UIApplication.shared.open(url)
+            startCheckoutSession(url)
+        }
+
+        /// Runs Stripe Checkout in an in-app browser sheet. The server's
+        /// success/cancel URLs redirect to com.ninjaworld.attndr://checkout/return?next=/events/...,
+        /// which ends the session; the WebView then loads the order page.
+        private func startCheckoutSession(_ url: URL) {
+            checkoutSession?.cancel()
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "com.ninjaworld.attndr") { [weak self] callbackURL, _ in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.checkoutSession = nil
+                    let next = callbackURL.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "next" })?.value }
+                    if let next, next.hasPrefix("/events/"), !next.hasPrefix("//"),
+                       let base = AppEnvironment.startURL, let target = URL(string: next, relativeTo: base)?.absoluteURL,
+                       AppEnvironment.isAppURL(target) {
+                        self.webView?.load(URLRequest(url: target, cachePolicy: .reloadIgnoringLocalCacheData))
+                    } else {
+                        // Sheet closed without a return URL: re-enable the pay button.
+                        self.webView?.reload()
+                    }
+                }
+            }
+            session.presentationContextProvider = self
+            session.prefersEphemeralWebBrowserSession = true
+            checkoutSession = session
+            if !session.start() {
+                checkoutSession = nil
+                UIApplication.shared.open(url)
+            }
+        }
+
+        /// Shows the system "Add Event" sheet in the app. EKEventEditViewController
+        /// runs out of process on iOS 17+, so no calendar permission is needed.
+        private func presentCalendarEditor(_ body: Any) {
+            guard let data = body as? [String: Any],
+                  let title = data["title"] as? String, !title.isEmpty else { return }
+            let iso = ISO8601DateFormatter()
+            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let isoPlain = ISO8601DateFormatter()
+            func date(_ key: String) -> Date? {
+                guard let raw = data[key] as? String, !raw.isEmpty else { return nil }
+                return iso.date(from: raw) ?? isoPlain.date(from: raw)
+            }
+            guard let start = date("start") else { return }
+            let event = EKEvent(eventStore: eventStore)
+            event.title = title
+            event.startDate = start
+            event.endDate = date("end") ?? start.addingTimeInterval(2 * 60 * 60)
+            if let location = data["location"] as? String, !location.isEmpty { event.location = location }
+            if let raw = data["url"] as? String, let url = URL(string: raw) { event.url = url }
+            let editor = EKEventEditViewController()
+            editor.eventStore = eventStore
+            editor.event = event
+            editor.editViewDelegate = self
+            var presenter = webView?.window?.rootViewController
+            while let presented = presenter?.presentedViewController { presenter = presented }
+            presenter?.present(editor, animated: true)
+        }
+
+        func eventEditViewController(_ controller: EKEventEditViewController, didCompleteWith action: EKEventEditViewAction) {
+            controller.dismiss(animated: true)
         }
 
         func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
