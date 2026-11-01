@@ -5,6 +5,7 @@ export type TicketTier = {
   price: number;
   availability: "sold-out" | "available" | "limited";
   badge?: string;
+  currency?: string;
 };
 
 export type CheckoutAttendee = {

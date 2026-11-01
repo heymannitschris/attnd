@@ -38,6 +38,7 @@ function mapRow(row: EventRow): { event: DiscoveryEvent; details: EventDetails; 
     name: tier.name,
     description: tier.description,
     price: tier.price_minor / 100,
+    currency: tier.currency?.toUpperCase(),
     availability: tier.sold_count + (tier.reserved_count || 0) >= tier.quantity ? "sold-out" : tier.quantity - tier.sold_count - (tier.reserved_count || 0) <= 10 ? "limited" : "available",
   }));
   const lowest = tiers.filter((tier) => tier.availability !== "sold-out").sort((a, b) => a.price - b.price)[0];

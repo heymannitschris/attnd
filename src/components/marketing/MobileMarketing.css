@@ -11,7 +11,8 @@
   .attnd-mobile-nav-link svg, .attnd-mobile-primary svg { width: 18px; height: 18px; }
   .attnd-mobile-kicker { display: block; color: #ffffff; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
   .attnd-mobile-hero-copy { padding: 55px 24px 53px; }
-  .attnd-mobile-hero h1 { margin: 21px 0 20px; font-size: clamp(48px,12vw,76px); font-weight: 750; letter-spacing: -.035em; line-height: 1.02; }
+  .attnd-mobile-hero h1, .attnd-mobile-hero .attnd-mobile-hero-title { margin: 21px 0 20px; font-size: clamp(48px,12vw,76px); font-weight: 750; letter-spacing: -.035em; line-height: 1.02; }
+  .attnd-mobile-hero .attnd-mobile-hero-title { max-width: none; }
   .attnd-mobile-hero p { max-width: 490px; color: #ffffff; font-size: 16px; line-height: 1.6; }
   .attnd-mobile-primary { display: inline-flex; min-height: 54px; align-items: center; justify-content: center; gap: 22px; border-radius: 8px; padding: 0 20px; background: #ffffff; color: #000000 !important; font-size: 14px; font-weight: 800; }
   .attnd-mobile-hero .attnd-mobile-primary { margin-top: 29px; }

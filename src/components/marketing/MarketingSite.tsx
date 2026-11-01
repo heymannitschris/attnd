@@ -39,7 +39,7 @@ export function MarketingSite() {
     </header>
     <main>
       <section className="attnd-mobile-hero" id="mobile-top">
-        <div className="attnd-mobile-hero-copy"><span className="attnd-mobile-kicker">DIE APP FÜR EVENTVERANSTALTER</span><h1>Dein Event.<br />Deine Leute.<br /><em>Ein Ort.</em></h1><p>Plane dein Event, erreiche Menschen in der Attnd-Community und behalte alles im Griff.</p><ul className="attnd-mobile-points"><li>Tickets &amp; Zahlungen</li><li>Community-Reichweite</li><li>Co-Hosts &amp; Affiliates</li><li>QR-Check-in</li></ul><a className="attnd-mobile-primary" href="#mobile-start">Event starten <Arrow /></a></div>
+        <div className="attnd-mobile-hero-copy"><span className="attnd-mobile-kicker">DIE APP FÜR EVENTVERANSTALTER</span><p className="attnd-mobile-hero-title">Dein Event.<br />Deine Leute.<br /><em>Ein Ort.</em></p><p>Plane dein Event, erreiche Menschen in der Attnd-Community und behalte alles im Griff.</p><ul className="attnd-mobile-points"><li>Tickets &amp; Zahlungen</li><li>Community-Reichweite</li><li>Co-Hosts &amp; Affiliates</li><li>QR-Check-in</li></ul><a className="attnd-mobile-primary" href="#mobile-start">Event starten <Arrow /></a></div>
         <div className="attnd-mobile-hero-art"><div className="attnd-mobile-star" aria-hidden="true" /><div className="attnd-mobile-phones"><AppPhone view="discover" className="attnd-mobile-phone-back" /><AppPhone view="dashboard" className="attnd-mobile-phone-front" /></div><span className="attnd-mobile-preview-label">Echte App-Oberfläche · Beispieldaten</span></div>
       </section>
       <div className="attnd-mobile-strip" aria-label="App herunterladen">
